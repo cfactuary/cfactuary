@@ -60,3 +60,41 @@ contbkt<-function(ds,var,newvar,wate,bkt) {
   gc() }
 
 
+
+# Univariate function for continuous
+# This function converts a continuous variable into N equally weighted buckets and produces univariate statistics
+# @param ds dataframe containing variable
+# @param v variable to put into buckets
+# @param w weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param t target variable
+# @param q number of quantiles to place variable into
+# @return dataframe with n buckets and average target per bucket
+
+uni<-function(ds,v,w,t,q) {
+  x<-ds%>%select(v,w,t)%>%rename(V=1,W=2,T=3)
+  x1<-x%>%filter(is.na(V))%>%mutate(Q=9999)%>%group_by(Q)%>%summarize(P=sum(W),T=crossprod(T,W)/sum(W))
+  x2<-x%>%filter(!is.na(V))%>%arrange(V)%>%mutate(Q=ceiling(cumsum(W)/sum(W)/(1/q)))%>%group_by(Q)%>%summarize(P=sum(W),L=min(V),H=max(V),V=crossprod(V,W)/sum(W),T=crossprod(T,W)/sum(W))
+  x<-bind_rows(x2,x1)
+  x$T <- round( x$T / (crossprod(x$P,x$T)/sum(x$P) ), 3)
+  return(x) }
+
+
+# Univariate function for categorical
+# This function produces univariate statistics for categorical variable
+# @param ds dataframe containing variable
+# @param v variable to put into buckets
+# @param w weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param t target variable
+# @return dataframe with n buckets and average target per bucket
+
+unic<-function(ds,v,w,t) {
+  x<-ds%>%select(v,w,t)%>%rename(V=1,W=2,T=3)
+  x1<-x%>%filter(is.na(V))%>%mutate(V='Z_NA')%>%group_by(V)%>%summarize(P=sum(W),T=crossprod(T,W)/sum(W))
+  x2<-x%>%filter(!is.na(V))%>%mutate(V=as.character(V))%>%group_by(V)%>%summarize(P=sum(W),T=crossprod(T,W)/sum(W))
+  x<-bind_rows(x2,x1)
+  x$T <- round( x$T / (crossprod(x$P,x$T)/sum(x$P) ), 3)
+  return(x) }
+
+
+
+
