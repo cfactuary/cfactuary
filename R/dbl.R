@@ -96,5 +96,26 @@ unic<-function(ds,v,w,t) {
   return(x) }
 
 
+# Multiple variable univariate function for continuous
+# This function intakes a list of continuous variables and produces univariate statistics in equally weighted buckets
+# @param myds dataframe containing variable
+# @param mylist list of continuous variables to put into buckets
+# @param wywate weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param mytar target variable
+# @param mybkt number of quantiles to place variable into
+# @return dataframe with n buckets and average target per bucket
+
+uniloop <- function(myds, mylist, mywate, mytar, mybkt) {
+  a<-mylist
+  d<-myds
+  for (ctr in 1:length(a)) {
+    x<-a[ctr]
+    v<-uni(d,x,mywate,mytar,10)
+    v$var<-x
+    if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
+    rm(x,v) }
+  vv<-vv%>%mutate(L=round(L,3),H=round(H,3),V=round(V,3),T=round(T,3))
+  return(vv) }
+
 
 
