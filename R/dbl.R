@@ -118,4 +118,26 @@ uniloop <- function(myds, mylist, mywate, mytar, mybkt) {
   return(vv) }
 
 
+# Multiple variable univariate function for categorical
+# This function intakes a list of categorical variables and produces univariate statistics for any meetign minimum weight threshold
+# @param myds dataframe containing variable
+# @param mylist list of continuous variables to put into buckets
+# @param wywate weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param mytar target variable
+# @param mythresh cutoff weight for what to display
+# @return dataframe with average target per bucket
+
+cateloop <- function(myds, mylist, mywate, mytar, mythresh) {
+  a<-mylist
+  d<-myds
+  for (ctr in 1:length(a)) {
+    x<-a[ctr]
+    v<-unic(d,x,mywate,mytar)
+    v$V <- ifelse(v$P/sum(v$P)<mythresh, 'z_oth', v$V)
+    v<-v%>%group_by(V)%>%summarize(T=round(crossprod(P,T)/sum(P),3),P=sum(P))
+    v$var<-x
+    if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
+    rm(x,v) }
+  return(vv) }
+
 
