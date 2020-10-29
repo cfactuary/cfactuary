@@ -110,7 +110,7 @@ uniloop <- function(myds, mylist, mywate, mytar, mybkt) {
   d<-myds
   for (ctr in 1:length(a)) {
     x<-a[ctr]
-    v<-uni(d,x,mywate,mytar,10)
+    v<-uni(d,x,mywate,mytar,mybkt)
     v$var<-x
     if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
     rm(x,v) }
