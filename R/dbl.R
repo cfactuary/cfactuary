@@ -141,3 +141,26 @@ cateloop <- function(myds, mylist, mywate, mytar, mythresh) {
   return(vv) }
 
 
+# Multiple Variable Actual vs Expected function for categorical
+# This function produces univariate actual (target) and expected (predicted) statistics for multiple categorical variables
+# More generally, it produces weighted averages for two numeric variables (mytar,mypred) by each categorical variable in list (mylist) 
+# @param myds dataframe containing variables
+# @param mylist list of categorical variables to put into buckets
+# @param wywate weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param mytar target (actual) variable
+# @param mypred prediction (expected) variable
+# @param mythresh cutoff weight for what to display
+# @return dataframe with average target and prediction per bucket for each categorical in mylist
+
+avecloop <- function(myds, mylist, mywate, mytar, mypred, mythresh) {
+  a<-mylist
+  d<-myds
+  for (ctr in 1:length(a)) {
+    x<-a[ctr]
+    v<-avec(d,x,mywate,mytar,mypred)
+    v$V <- ifelse(v$Wt/sum(v$Wt)<mythresh, 'z_oth', v$V)
+    v<-v%>%group_by(V)%>%summarize(T=round(crossprod(Wt,T)/sum(Wt),3),P=round(crossprod(Wt,P)/sum(Wt),3),Wt=sum(Wt))
+    v$var<-x
+    if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
+    rm(x,v) }
+  return(vv) }
