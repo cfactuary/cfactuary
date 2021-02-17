@@ -156,8 +156,8 @@ avec<-function(ds,v,w,t,p) {
   x1<-x%>%filter(is.na(V))%>%mutate(V='Z_NA')%>%group_by(V)%>%summarize(Wt=sum(W),T=crossprod(T,W)/sum(W),P=crossprod(P,W)/sum(W))
   x2<-x%>%filter(!is.na(V))%>%mutate(V=as.character(V))%>%group_by(V)%>%summarize(Wt=sum(W),T=crossprod(T,W)/sum(W),P=crossprod(P,W)/sum(W))
   x<-bind_rows(x2,x1)
-  x$T <- round( x$T / (crossprod(x$Wt,x$T)/sum(x$Wt) ), 3)
-  x$P <- round( x$P / (crossprod(x$Wt,x$P)/sum(x$Wt) ), 3)
+  x$T <- round( x$T / as.vector((crossprod(x$Wt,x$T)/sum(x$Wt) )), 3)
+  x$P <- round( x$P / as.vector((crossprod(x$Wt,x$P)/sum(x$Wt) )), 3)
   return(x) }
 
 
