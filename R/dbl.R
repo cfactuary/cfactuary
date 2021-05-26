@@ -11,7 +11,7 @@
 # @return contains either a table or a plot containing the lift chart content
 dbl <- function(ds , champ, chall, target, wate,bkt,indx_tf,graph_tf){
   a<-subset(ds,select=c(champ,chall,target,wate))%>%rename( prd0=1, prd1=2, tar=3, wgt=4) %>% mutate( chg = as.numeric(round(prd1/prd0,3)), grp=1)
-  a<-a%>%arrange(grp,chg)%>%group_by(grp)%>%mutate(qnt = ceiling( bkt * (cumsum(wgt)/sum(wgt)) ), prd0=prd0*wgt, prd1=prd1*wgt,tar=tar*wgt) %>% group_by(qnt) %>% summarize_at(c('wgt','prd0','prd1','tar'),sum)  %>% mutate( prd0=round(prd0/wgt,3) , prd1=round(prd1/wgt,3), tar=round(tar/wgt,3) )
+  a<-a%>%arrange(grp,chg)%>%group_by(grp)%>%mutate(qnt = ceiling( bkt * (cumsum(wgt)/sum(wgt)) ), prd0=prd0*wgt, prd1=prd1*wgt,tar=tar*wgt) %>% group_by(qnt) %>% summarise_at(c('wgt','prd0','prd1','tar'),sum)  %>% mutate( prd0=round(prd0/wgt,3) , prd1=round(prd1/wgt,3), tar=round(tar/wgt,3) )
   if (indx_tf == 1) { a<-a%>%mutate( prd0=sum(wgt)*prd0/crossprod(wgt,prd0) , prd1=sum(wgt)*prd1/ crossprod(wgt,prd1) , tar=sum(wgt)*tar/crossprod(wgt,tar) ) }
   a<-a%>%mutate(chg=prd1/prd0)%>%select(qnt,wgt,chg,prd0,prd1,tar)
   a1<-a%>%select(qnt,prd0)%>%rename(prd=2)%>%mutate(metric='champion',prd=round(prd,2))
@@ -34,7 +34,7 @@ dbl <- function(ds , champ, chall, target, wate,bkt,indx_tf,graph_tf){
 # @return contains either a table or a plot containing the CPR type plot
 myCpr<-function(ds,var,target,chall,wate,beta,bkt,graph_tf){
   d<-subset(ds,select=c(var,target,chall,wate))%>%select(v=var,t=target,p=chall,w=wate)%>%arrange(v)
-  d<-d%>%mutate(v=exp(v)*w, t=t*w, p=p*w) %>%mutate(c=ceiling( (cumsum(w)/sum(w)) / (1/bkt)))%>%group_by(c)%>%summarize(v=sum(v)/sum(w),t=sum(t)/sum(w),p=sum(p)/sum(w),w=sum(w))
+  d<-d%>%mutate(v=exp(v)*w, t=t*w, p=p*w) %>%mutate(c=ceiling( (cumsum(w)/sum(w)) / (1/bkt)))%>%group_by(c)%>%summarise(v=sum(v)/sum(w),t=sum(t)/sum(w),p=sum(p)/sum(w),w=sum(w))
   d <-d%>%mutate(y=log(t)-log(p)+beta*log(v), x=log(v), f=beta*log(v))
   if (graph_tf ==1) { d<- ggplot(data=d, aes(x=x, y=y, group=1)) + geom_point() + geom_smooth(method = "lm", se = FALSE) + geom_line(aes(x=x,y=beta*x)) + theme_bw() + xlab(var) + ylab(target)  +   theme(axis.text.x = element_text(angle = 45),legend.position="bottom")   }
   return(d) }
@@ -72,8 +72,8 @@ contbkt<-function(ds,var,newvar,wate,bkt) {
 
 uni<-function(ds,v,w,t,q) {
   x<-ds%>%select(v,w,t)%>%rename(V=1,W=2,T=3)
-  x1<-x%>%filter(is.na(V))%>%mutate(Q=9999)%>%group_by(Q)%>%summarize(P=sum(W),T=crossprod(T,W)/sum(W))
-  x2<-x%>%filter(!is.na(V))%>%arrange(V)%>%mutate(Q=ceiling(cumsum(W)/sum(W)/(1/q)))%>%group_by(Q)%>%summarize(P=sum(W),L=min(V),H=max(V),V=crossprod(V,W)/sum(W),T=crossprod(T,W)/sum(W))
+  x1<-x%>%filter(is.na(V))%>%mutate(Q=9999)%>%group_by(Q)%>%summarise(P=sum(W),T=crossprod(T,W)/sum(W))
+  x2<-x%>%filter(!is.na(V))%>%arrange(V)%>%mutate(Q=ceiling(cumsum(W)/sum(W)/(1/q)))%>%group_by(Q)%>%summarise(P=sum(W),L=min(V),H=max(V),V=crossprod(V,W)/sum(W),T=crossprod(T,W)/sum(W))
   x<-bind_rows(x2,x1)
   x$T <- round( x$T / (crossprod(x$P,x$T)/sum(x$P) ), 3)
   return(x) }
@@ -89,8 +89,8 @@ uni<-function(ds,v,w,t,q) {
 
 unic<-function(ds,v,w,t) {
   x<-ds%>%select(v,w,t)%>%rename(V=1,W=2,T=3)
-  x1<-x%>%filter(is.na(V))%>%mutate(V='Z_NA')%>%group_by(V)%>%summarize(P=sum(W),T=crossprod(T,W)/sum(W))
-  x2<-x%>%filter(!is.na(V))%>%mutate(V=as.character(V))%>%group_by(V)%>%summarize(P=sum(W),T=crossprod(T,W)/sum(W))
+  x1<-x%>%filter(is.na(V))%>%mutate(V='Z_NA')%>%group_by(V)%>%summarise(P=sum(W),T=crossprod(T,W)/sum(W))
+  x2<-x%>%filter(!is.na(V))%>%mutate(V=as.character(V))%>%group_by(V)%>%summarise(P=sum(W),T=crossprod(T,W)/sum(W))
   x<-bind_rows(x2,x1)
   x$T <- round( x$T / (crossprod(x$P,x$T)/sum(x$P) ), 3)
   return(x) }
@@ -134,7 +134,7 @@ cateloop <- function(myds, mylist, mywate, mytar, mythresh) {
     x<-a[ctr]
     v<-unic(d,x,mywate,mytar)
     v$V <- ifelse(v$P/sum(v$P)<mythresh, 'z_oth', v$V)
-    v<-v%>%group_by(V)%>%summarize(T=round(crossprod(P,T)/sum(P),3),P=sum(P))
+    v<-v%>%group_by(V)%>%summarise(T=round(crossprod(P,T)/sum(P),3),P=sum(P))
     v$var<-x
     if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
     rm(x,v) }
@@ -153,8 +153,8 @@ cateloop <- function(myds, mylist, mywate, mytar, mythresh) {
 
 avec<-function(ds,v,w,t,p) {
   x<-ds%>%select(v,w,t,p)%>%rename(V=1,W=2,T=3,P=4)
-  x1<-x%>%filter(is.na(V))%>%mutate(V='Z_NA')%>%group_by(V)%>%summarize(Wt=sum(W),T=crossprod(T,W)/sum(W),P=crossprod(P,W)/sum(W))
-  x2<-x%>%filter(!is.na(V))%>%mutate(V=as.character(V))%>%group_by(V)%>%summarize(Wt=sum(W),T=crossprod(T,W)/sum(W),P=crossprod(P,W)/sum(W))
+  x1<-x%>%filter(is.na(V))%>%mutate(V='Z_NA')%>%group_by(V)%>%summarise(Wt=sum(W),T=crossprod(T,W)/sum(W),P=crossprod(P,W)/sum(W))
+  x2<-x%>%filter(!is.na(V))%>%mutate(V=as.character(V))%>%group_by(V)%>%summarise(Wt=sum(W),T=crossprod(T,W)/sum(W),P=crossprod(P,W)/sum(W))
   x<-bind_rows(x2,x1)
   x$T <- round( x$T / as.vector((crossprod(x$Wt,x$T)/sum(x$Wt) )), 3)
   x$P <- round( x$P / as.vector((crossprod(x$Wt,x$P)/sum(x$Wt) )), 3)
@@ -179,7 +179,7 @@ avecloop <- function(myds, mylist, mywate, mytar, mypred, mythresh) {
     x<-a[ctr]
     v<-avec(d,x,mywate,mytar,mypred)
     v$V <- ifelse(v$Wt/sum(v$Wt)<mythresh, 'z_oth', v$V)
-    v<-v%>%group_by(V)%>%summarize(T=round(crossprod(Wt,T)/sum(Wt),3),P=round(crossprod(Wt,P)/sum(Wt),3),Wt=sum(Wt))
+    v<-v%>%group_by(V)%>%summarise(T=round(crossprod(Wt,T)/sum(Wt),3),P=round(crossprod(Wt,P)/sum(Wt),3),Wt=sum(Wt))
     v$var<-x
     if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
     rm(x,v) }
