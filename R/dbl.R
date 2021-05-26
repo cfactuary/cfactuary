@@ -50,8 +50,8 @@ myCpr<-function(ds,var,target,chall,wate,beta,bkt,graph_tf){
 contbkt<-function(ds,var,newvar,wate,bkt) {
   x<- subset( ds, select=c(var,wate))  %>% rename(v=1,w=2)
   x <- x  %>% filter(!is.na(v)) %>% arrange(v,w) %>% mutate(w=pmax(.00001, w)) %>% mutate( b = ceiling( (cumsum(w)/sum(w)) / (1/bkt) ) , vw=w*v)
-  x2 <- x %>% group_by(v,b) %>% summarize(w=sum(w)) %>% arrange(v,desc(w)) %>% group_by(v) %>% mutate(ct=1,ct=cumsum(ct)) %>% filter(ct==1) %>% select(v,b)
-  x <- left_join(x%>%select(-b),x2,by='v') %>% group_by(b) %>% mutate(vw=sum(vw)/sum(w)) %>% group_by( v, vw) %>% summarize
+  x2 <- x %>% group_by(v,b) %>% summarise(w=sum(w)) %>% arrange(v,desc(w)) %>% group_by(v) %>% mutate(ct=1,ct=cumsum(ct)) %>% filter(ct==1) %>% select(v,b)
+  x <- left_join(x%>%select(-b),x2,by='v') %>% group_by(b) %>% mutate(vw=sum(vw)/sum(w)) %>% group_by( v, vw) %>% summarise
   x$vw<- as.character(x$vw)
   x<-setnames(x,old=c('v'),new=c(var))
   y<-left_join(ds,x,by=var) %>% mutate (vw=ifelse(is.na(vw), 'z', vw) )
