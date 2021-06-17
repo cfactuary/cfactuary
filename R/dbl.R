@@ -75,7 +75,7 @@ uni<-function(ds,v,w,t,q) {
   x1<-x%>%filter(is.na(V))%>%mutate(Q=9999)%>%group_by(Q)%>%summarise(P=sum(W),T=crossprod(T,W)/sum(W))
   x2<-x%>%filter(!is.na(V))%>%arrange(V)%>%mutate(Q=ceiling(cumsum(W)/sum(W)/(1/q)))%>%group_by(Q)%>%summarise(P=sum(W),L=min(V),H=max(V),V=crossprod(V,W)/sum(W),T=crossprod(T,W)/sum(W))
   x<-bind_rows(x2,x1)
-  x$T <- round( x$T / (crossprod(x$P,x$T)/sum(x$P) ), 3)
+  x$T <- round( x$T / as.vector((crossprod(x$P,x$T)/sum(x$P) )), 3)
   return(x) }
 
 
@@ -92,7 +92,7 @@ unic<-function(ds,v,w,t) {
   x1<-x%>%filter(is.na(V))%>%mutate(V='Z_NA')%>%group_by(V)%>%summarise(P=sum(W),T=crossprod(T,W)/sum(W))
   x2<-x%>%filter(!is.na(V))%>%mutate(V=as.character(V))%>%group_by(V)%>%summarise(P=sum(W),T=crossprod(T,W)/sum(W))
   x<-bind_rows(x2,x1)
-  x$T <- round( x$T / (crossprod(x$P,x$T)/sum(x$P) ), 3)
+  x$T <- round( x$T / as.vector((crossprod(x$P,x$T)/sum(x$P) )), 3)
   return(x) }
 
 
