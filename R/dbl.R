@@ -185,3 +185,46 @@ avecloop <- function(myds, mylist, mywate, mytar, mypred, mythresh) {
     rm(x,v) }
   return(vv) }
 
+# Actual vs Expected function for continuous
+# This function produces univariate actual and expected (predicted) statistics for continuous variable
+# More generally, it produces weighted averages for two numeric variables (t,p) by a third, numeric variable (v) 
+# @param ds dataframe containing variable
+# @param v variable to put into buckets
+# @param w weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param t target variable
+# @param p expected/predicted variable
+# @param q number of quantiles to place variable into
+# @return dataframe with n buckets and average target and prediction per bucket
+
+ave<-function(ds,v,w,t,p,q) {
+  x<-ds%>%select(v,w,t,p)%>%rename(V=1,W=2,T=3,P=4)
+  x1<-x%>%filter(is.na(V))%>%mutate(Q=9999)%>%group_by(Q)%>%summarise(Wt=sum(W),T=crossprod(T,W)/sum(W),P=crossprod(P,W)/sum(W))
+  x2<-x%>%filter(!is.na(V))%>%arrange(V)%>%mutate(Q=ceiling(cumsum(W)/sum(W)/(1/q)))%>%group_by(Q)%>%summarise(Wt=sum(W),L=min(V),H=max(V),V=crossprod(V,W)/sum(W),T=crossprod(T,W)/sum(W),P=crossprod(P,W)/sum(W))
+  x<-bind_rows(x2,x1)
+  x$T <- round( x$T / as.vector((crossprod(x$Wt,x$T)/sum(x$Wt) )), 3)
+  x$P <- round( x$P / as.vector((crossprod(x$Wt,x$P)/sum(x$Wt) )), 3)
+  return(x) }
+
+
+# Multiple Variable Actual vs Expected function for continuous
+# This function produces univariate actual (target) and expected (predicted) statistics for multiple continuous variables
+# More generally, it produces weighted averages for two numeric variables (mytar,mypred) by each numeric variable in list (mylist) 
+# @param myds dataframe containing variables
+# @param mylist list of continuous variables to put into buckets
+# @param wywate weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param mytar target (actual) variable
+# @param mypred prediction (expected) variable
+# @param mybkt number of quantiles to place variable into
+# @return dataframe with average target and prediction per bucket for each continuous variable in mylist
+
+aveloop <- function(myds, mylist, mywate, mytar, mypred, mybkt) {
+  a<-mylist
+  d<-myds
+  for (ctr in 1:length(a)) {
+    x<-a[ctr]
+    v<-ave(d,x,mywate,mytar,mypred,mybkt)
+    v$var<-x
+    if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
+    rm(x,v) }
+  vv<-vv%>%mutate(L=round(L,3),H=round(H,3),V=round(V,3),T=round(T,3))
+  return(vv) }
