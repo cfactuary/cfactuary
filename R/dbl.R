@@ -228,3 +228,29 @@ aveloop <- function(myds, mylist, mywate, mytar, mypred, mybkt) {
     rm(x,v) }
   vv<-vv%>%mutate(L=round(L,3),H=round(H,3),V=round(V,3),T=round(T,3))
   return(vv) }
+
+
+# Relative Net Lift Function
+# This function produces "relative net lift" calculations for a specified dataset.
+# That is, it calculates the maximum possible Gini gain from a naive to an ideal model, and what % of that gain a candidate model consumes.
+# @param myds dataframe containing candidate model(s) and target
+# @param myfloor99 naive model
+# @param mypred99 candidate model
+# @param mytarget99 ideal model
+# @param myriem99 number of rectangles to use in riemann sum for area under curve
+# @param mymemo99 description to append to output, typically of candidate model
+# @return dataframe with naive, candidate, and ideal ginis and resulting opportunity consumption
+
+netlift<-function(ds,myfloor99,mypred99,mytarget99,myriem99,mymemo99){
+  f=subset(ds,select=c(myfloor99))%>%rename(f=1)     
+  m=subset(ds,select=c(mypred99))%>%rename(m=1)
+  c=subset(ds,select=c(mytarget99))%>%rename(c=1)
+  a<-cbind(f,m,c)%>%mutate(x=1,f=pmax(0.00001,f) )
+  af<- a%>% group_by(x) %>% arrange( f ) %>% mutate( q= ceiling(cumsum( f)/sum(f) * myriem99 ) ) %>% group_by( x,q ) %>% summarise( wf=sum(f), tf=sum(c ) ) %>% arrange(x,q) %>%group_by(x) %>% mutate(wf=cumsum(wf)/sum(wf), tf=cumsum(tf)/sum(tf) ,df=wf-tf)
+  am<- a%>% group_by(x) %>% arrange( m ) %>% mutate( q= ceiling(cumsum( f)/sum(f) * myriem99 ) ) %>% group_by( x,q ) %>% summarise( wm=sum(f), tm=sum(c ) ) %>% arrange(x,q) %>%group_by(x) %>% mutate(wm=cumsum(wm)/sum(wm), tm=cumsum(tm)/sum( tm ), dm=wm-tm )
+  ac<- a%>% group_by( x) %>% arrange( c ) %>% mutate( q= ceiling(cumsum( f)/sum(f) * myriem99 ) ) %>% group_by( x,q ) %>% summarise( wc=sum(f), tc=sum(c ) ) %>% arrange(x,q) %>%group_by(x) %>% mutate(wc=cumsum(wc)/sum(wc), tc=cumsum(tc)/sum(tc) , dc=wc - tc )
+  a<-af%>%inner_join(am)%>%inner_join(ac) %>% mutate( rectangles=1) %>% group_by( x) %>% summarise( dummy=sum( df )/sum(rectangles), model=sum( dm)/sum(rectangles), genius= sum ( dc )/sum(rectangles) )
+  a<-a%>%mutate(opportunity=genius-dummy, achievement=model-dummy, relnetlift= achievement/opportunity) %>% ungroup() %>% select(-x) %>% mutate( nametag=mymemo99)
+  rm(m,c,f,af,am,ac)
+return(a) }
+
