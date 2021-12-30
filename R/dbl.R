@@ -254,3 +254,52 @@ netlift<-function(ds,myfloor99,mypred99,mytarget99,myriem99,mymemo99){
   rm(m,c,f,af,am,ac)
 return(a) }
 
+
+
+# Tweedie forward selection based on AIC
+# This function steps through a list of variables and selects them based on AIC
+# At each iteration, it selects the variables that improves AIC the most, holding constant previously selected variable list
+# @param myds99 dataframe containing variables, targets, and weights
+# @param myvar99 list of variables to step through in standard R list format
+# @param mytar99 target variable
+# @param wywate99 weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param mypower99 P parameter to use for Tweedie GLM fit
+# @return dataframe with order variables are selected and resulting AIC improvement
+
+forwardtweedie<-function( myds99, myvar99, mytar99, mywate99, mypower99 ) {
+# weights vector
+mywt99=subset(myds99%>%ungroup(),select=c(mywate99))%>%rename(w=1)
+mylen99<-length(myvar99)
+for(ctr0 in 1:length(myvar99)) {
+
+# create lists of selected vs. unselected variables to consider each iteration
+if (ctr0==1) {myvar90<-myvar99} else
+{ myvar90<-as.data.frame(myvar99)%>%rename(myvari=1)%>%  inner_join(myout90%>%filter(iter==(ctr0-1)&rnk!=1)%>%select(myvari))    
+     names(myvar90)<−NULL
+     myvar90<-as.list(t(myvar90)) 
+ myvar9x<-as.data.frame(myvar99)%>%rename(myvari=1)%>%  inner_join(myout90%>%filter(rnk==1)%>%select(myvari))    
+     names(myvar9x)<−NULL
+     myvar9x<-as.list(t(myvar9x)) }
+ for (ctrx in 1:length(myvar9x)) {
+        if (ctrx==1) { mystr9x<-as.character(myvar9x[ctrx]) } else
+       { mystr9x<-paste(mystr9x,' + ', as.character(myvar9x[ctrx]) ) }
+   }
+
+# step through variables one at a time to find minimum AIC
+      for (ctr1 in 1:length(myvar90)) {
+            myvar91<-as.character(myvar90[ctr1])
+            if (ctr0==1) { mystr91<-paste(  mytar99 , ' ~ ', myvar91 ) }
+            if (ctr0!=1) { mystr91<-paste(  mytar99 , ' ~ ', mystr9x, ' + ', myvar91 )  }
+            myglm91 <-glm(mystr91, myds99 , mywt99$w ,family=tweedie(var.power=mypower99, link.power=0))
+            myaic91<-AICtweedie(myglm91)
+            myaic91<-as.data.frame(myaic91)%>%rename(aic=1)%>%mutate(myvari=myvar91)
+             if (ctr1==1) {myout91<-myaic91} else {myout91<-bind_rows(myout91,myaic91)}
+          myout91<-myout91%>%arrange(aic)%>%mutate(rnk=1,rnk=cumsum(rnk),iter=ctr0)
+           }
+     if (ctr0==1) {myout90<-myout91} else {myout90<-bind_rows(myout90,myout91)}
+     if (ctr0==1) {mysel90<-myout90%>%filter(rnk==1)%>%mutate(improve=1.0000)} else {mysel90<-myout90%>%filter(rnk==1)%>%left_join(mysel90%>%mutate(iter=iter+1)%>%select(iter,aic)%>%rename(aic0=aic))%>%mutate(improve=round(aic0/aic,4))%>%select(-aic0) }
+gc() }
+rm(myaic91,myglm91,myout91,myout90,myvar90,mysel90)
+return(mysel90) }
+
+
