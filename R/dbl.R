@@ -266,9 +266,9 @@ return(a) }
 # @param mypower99 P parameter to use for Tweedie GLM fit
 # @return dataframe with order variables are selected and resulting AIC improvement
 
-forwardtweedie<-function( myds99, myvar99, mytar99, mywate99, mypower99 ) {
+ForwardTweedie<-function( myds99, myvar99, mytar99, mywate99, mypower99 ) {
 # weights vector
-mywt99=subset(myds99%>%ungroup(),select=c(mywate99))%>%rename(w=1)
+mywt99<-subset(myds99%>%ungroup(),select=c(mywate99))%>%rename(w=1)
 mylen99<-length(myvar99)
 for(ctr0 in 1:length(myvar99)) {
 
