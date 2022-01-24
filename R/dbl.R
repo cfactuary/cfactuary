@@ -79,6 +79,28 @@ uni<-function(ds,v,w,t,q) {
   return(x) }
 
 
+# Univariate function for continuous with 3 targets
+# This function converts a continuous variable into N equally weighted buckets and produces univariate statistics
+# @param ds dataframe containing variable
+# @param v variable to put into buckets
+# @param w weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param t1 first target variable
+# @param t2 second target variable
+# @param t3 third target variable
+# @param q number of quantiles to place variable into
+# @return dataframe with n buckets and average target per bucket
+
+uni3<-function(ds,v,w,t1,t2,t3,q) {
+  x<-ds%>%select(v,w,t1,t2,t3)%>%rename(V=1,W=2,T1=3,T2=4,T3=5)
+  x1<-x%>%filter(is.na(V))%>%mutate(Q=9999)%>%group_by(Q)%>%summarise(P=sum(W),T1=crossprod(T1,W)/sum(W),T2=crossprod(T2,W)/sum(W),T3=crossprod(T3,W)/sum(W))
+  x2<-x%>%filter(!is.na(V))%>%arrange(V)%>%mutate(Q=ceiling(cumsum(W)/sum(W)/(1/q)))%>%group_by(Q)%>%summarise(P=sum(W),L=min(V),H=max(V),V=crossprod(V,W)/sum(W),T1=crossprod(T1,W)/sum(W),T2=crossprod(T2,W)/sum(W),T3=crossprod(T3,W)/sum(W))
+  x<-bind_rows(x2,x1)
+  x$T1 <- round( x$T1 / as.vector((crossprod(x$P,x$T1)/sum(x$P) )), 3)
+  x$T2 <- round( x$T2 / as.vector((crossprod(x$P,x$T2)/sum(x$P) )), 3)
+  x$T3 <- round( x$T3 / as.vector((crossprod(x$P,x$T3)/sum(x$P) )), 3)
+  return(x) }
+
+
 # Univariate function for categorical
 # This function produces univariate statistics for categorical variable
 # @param ds dataframe containing variable
@@ -93,6 +115,27 @@ unic<-function(ds,v,w,t) {
   x2<-x%>%filter(!is.na(V))%>%mutate(V=as.character(V))%>%group_by(V)%>%summarise(P=sum(W),T=crossprod(T,W)/sum(W))
   x<-bind_rows(x2,x1)
   x$T <- round( x$T / as.vector((crossprod(x$P,x$T)/sum(x$P) )), 3)
+  return(x) }
+
+
+# Univariate function for categorical with 3 targets
+# This function produces univariate statistics for categorical variable
+# @param ds dataframe containing variable
+# @param v variable to put into buckets
+# @param w weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param t1 first target variable
+# @param t2 second target variable
+# @param t3 third target variable
+# @return dataframe with n buckets and average target per bucket
+
+unic3<-function(ds,v,w,t1,t2,t3) {
+  x<-ds%>%select(v,w,t1,t2,t3)%>%rename(V=1,W=2,T1=3,T2=4,T3=5)
+  x1<-x%>%filter(is.na(V))%>%mutate(V='Z_NA')%>%group_by(V)%>%summarise(P=sum(W),T1=crossprod(T1,W)/sum(W),T2=crossprod(T2,W)/sum(W),T3=crossprod(T3,W)/sum(W))
+  x2<-x%>%filter(!is.na(V))%>%mutate(V=as.character(V))%>%group_by(V)%>%summarise(P=sum(W),T1=crossprod(T1,W)/sum(W),T2=crossprod(T2,W)/sum(W),T3=crossprod(T3,W)/sum(W))
+  x<-bind_rows(x2,x1)
+  x$T1 <- round( x$T1 / as.vector((crossprod(x$P,x$T1)/sum(x$P) )), 3)
+  x$T2 <- round( x$T2 / as.vector((crossprod(x$P,x$T2)/sum(x$P) )), 3)
+  x$T3 <- round( x$T3 / as.vector((crossprod(x$P,x$T3)/sum(x$P) )), 3)
   return(x) }
 
 
@@ -118,6 +161,30 @@ uniloop <- function(myds, mylist, mywate, mytar, mybkt) {
   return(vv) }
 
 
+# Multiple variable univariate function for continuous with 3 targets
+# This function intakes a list of continuous variables and produces univariate statistics in equally weighted buckets
+# @param myds dataframe containing variable
+# @param mylist list of continuous variables to put into buckets
+# @param wywate weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param mytar1 first target variable
+# @param mytar2 second target variable
+# @param mytar3 third target variable
+# @param mybkt number of quantiles to place variable into
+# @return dataframe with n buckets and average target per bucket
+
+uniloop3 <- function(myds, mylist, mywate, mytar1, mytar2, mytar3, mybkt) {
+  a<-mylist
+  d<-myds
+  for (ctr in 1:length(a)) {
+    x<-a[ctr]
+    v<-uni3(d,x,mywate,mytar1,mytar2,mytar3,mybkt)
+    v$var<-x
+    if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
+    rm(x,v) }
+  vv<-vv%>%mutate(L=round(L,3),H=round(H,3),V=round(V,3),T1=round(T1,3),T2=round(T2,3),T3=round(T3,3))
+  return(vv) }
+
+
 # Multiple variable univariate function for categorical
 # This function intakes a list of categorical variables and produces univariate statistics for any meetign minimum weight threshold
 # @param myds dataframe containing variable
@@ -135,6 +202,31 @@ cateloop <- function(myds, mylist, mywate, mytar, mythresh) {
     v<-unic(d,x,mywate,mytar)
     v$V <- ifelse(v$P/sum(v$P)<mythresh, 'z_oth', v$V)
     v<-v%>%group_by(V)%>%summarise(T=round(crossprod(P,T)/sum(P),3),P=sum(P))
+    v$var<-x
+    if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
+    rm(x,v) }
+  return(vv) }
+
+
+# Multiple variable univariate function for categorical with 3 targets
+# This function intakes a list of categorical variables and produces univariate statistics for any meetign minimum weight threshold
+# @param myds dataframe containing variable
+# @param mylist list of continuous variables to put into buckets
+# @param wywate weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param mytar1 first target variable
+# @param mytar2 second target variable
+# @param mytar3 third target variable
+# @param mythresh cutoff weight for what to display
+# @return dataframe with average target per bucket
+
+cateloop3 <- function(myds, mylist, mywate, mytar1, mytar2, mytar3, mythresh) {
+  a<-mylist
+  d<-myds
+  for (ctr in 1:length(a)) {
+    x<-a[ctr]
+    v<-unic3(d,x,mywate,mytar1,mytar2,mytar3)
+    v$V <- ifelse(v$P/sum(v$P)<mythresh, 'z_oth', v$V)
+    v<-v%>%group_by(V)%>%summarise(T1=round(crossprod(P,T1)/sum(P),3),T2=round(crossprod(P,T2)/sum(P),3),T3=round(crossprod(P,T3)/sum(P),3),P=sum(P))
     v$var<-x
     if (ctr==1) {vv<-v} else {vv<-bind_rows(vv,v)}
     rm(x,v) }
