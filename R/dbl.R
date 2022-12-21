@@ -410,18 +410,20 @@ confuseit<-function( df1, cc1, cc2, ww, q ){
   x<-df1%>%ungroup()%>%
     select(cc1,cc2,ww)%>%
     rename(cc1=1,cc2=2,ww=3)
+  set.seed(1234)
+  x$n<-runif(nrow(x),0,1)
   x1<-x%>%filter(is.na(cc1)&!is.na(cc2))
   x2<-x%>%filter(is.na(cc2)&!is.na(cc1))
   x3<-x%>%filter(is.na(cc2)&is.na(cc1))
   x0<-x%>%filter(!is.na(cc1)&!is.na(cc2))
   x0c<-x0%>%cor()%>%as.data.frame()%>%head(1)%>%select(cc2)%>%as.numeric()
   x9<-x0%>%
-    arrange(cc1)%>%
+    arrange(cc1,n)%>%
     mutate(qq1=ceiling(cumsum(ww)/sum(ww)*q)/q)%>%
     group_by(qq1)%>%
     mutate(ql1=min(cc1),qh1=max(cc1))%>%
     ungroup()%>%
-    arrange(cc2)%>%
+    arrange(cc2,n)%>%
     mutate(qq2=ceiling(cumsum(ww)/sum(ww)*q)/q)%>%
     group_by(qq2)%>%
     mutate(ql2=min(cc2),qh2=max(cc2))%>%
