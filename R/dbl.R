@@ -408,7 +408,7 @@ return(mysel90) }
 
 confuseit<-function( df1, cc1, cc2, ww, q ){
   x<-df1%>%ungroup()%>%
-    select(d_credit,e_credit,s_submit)%>%
+    select(cc1,cc2,ww)%>%
     rename(cc1=1,cc2=2,ww=3)
   x1<-x%>%filter(is.na(cc1)&!is.na(cc2))
   x2<-x%>%filter(is.na(cc2)&!is.na(cc1))
