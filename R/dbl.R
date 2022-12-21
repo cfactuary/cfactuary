@@ -397,4 +397,59 @@ rm(myaic91,myglm91,myout91,myout90,myvar90)
 return(mysel90) }
 
 
+# Aggregated Confusion Matrix Function
+# displays confusion between two continuous variables (including NAs as their own levels)
+# @param df1 dataframe containing variables and weights
+# @param cc1 variable 1
+# @param cc2 variable 2
+# @param ww weighting variable (set variable to uniformly 1 for equally weighted observations)
+# @param q aggregation quantiles
+# @return dataframe with aggregated confusion effects
+
+confuseit<-function( df1, cc1, cc2, ww, q ){
+  x<-df1%>%ungroup()%>%
+    select(d_credit,e_credit,s_submit)%>%
+    rename(cc1=1,cc2=2,ww=3)
+  x1<-x%>%filter(is.na(cc1)&!is.na(cc2))
+  x2<-x%>%filter(is.na(cc2)&!is.na(cc1))
+  x3<-x%>%filter(is.na(cc2)&!is.na(cc1))
+  x0<-x%>%filter(!is.na(cc1)&!is.na(cc2))
+  x0c<-x0%>%cor()%>%as.data.frame()%>%head(1)%>%select(cc2)%>%as.numeric()
+  x9<-x0%>%
+    arrange(cc1)%>%
+    mutate(qq1=ceiling(cumsum(ww)/sum(ww)*q)/q)%>%
+    group_by(qq1)%>%
+    mutate(ql1=min(cc1),qh1=max(cc1))%>%
+    ungroup()%>%
+    arrange(cc2)%>%
+    mutate(qq2=ceiling(cumsum(ww)/sum(ww)*q)/q)%>%
+    group_by(qq2)%>%
+    mutate(ql2=min(cc2),qh2=max(cc2))%>%
+    group_by(qq1,ql1,qh1,qq2,ql2,qh2)%>%
+    summarize_at(c('ww'),sum)%>%ungroup()
+  x1a<-x9%>%select(qq2,qh2)%>%distinct()%>%mutate(qq2=round(qq2,5))
+  x1a<-x1a%>%left_join( x1a%>%mutate(qq2=round(qq2+1/q,5))%>%rename(ql2=qh2) )%>%
+    mutate(ql2=ifelse(is.na(ql2),-999999999,ql2+0.0000001) ) 
+  x1<-x1%>%mutate(dd=1)%>% left_join(x1a %>% mutate(dd=1) ) %>% 
+    filter(cc2>=ql2 & cc2 <= qh2)%>%
+    group_by(qq2,ql2,qh2)%>%
+    summarize_at(c('ww'),sum)%>%ungroup()%>%mutate(qq1=-1)
+  x2a<-x9%>%select(qq1,qh1)%>%distinct()%>%mutate(qq1=round(qq1,5))
+  x2a<-x2a%>%left_join( x2a%>%mutate(qq1=round(qq1+1/q,5))%>%rename(ql1=qh1) )%>%
+    mutate(ql1=ifelse(is.na(ql1),-999999999,ql1+0.0000001) ) 
+  x2<-x2%>%mutate(dd=1)%>% left_join(x2a %>% mutate(dd=1) ) %>% 
+    filter(cc1>=ql1 & cc1 <= qh1)%>%
+    group_by(qq1,ql1,qh1)%>%
+    summarize_at(c('ww'),sum)%>%ungroup() %>%mutate(qq2=-1)
+  x3<-x3%>%summarize_at(c('ww'),sum)%>%mutate(qq1=-1,qq2=-1)
+  x<-bind_rows(x9,x1,x2,x3)%>%
+    rename(confuse1=qq1,
+           confuse1_low=ql1,
+           confuse1_hi=qh1,
+           confuse2=qq2,
+           confuse2_low=ql2,
+           confuse2_hi=qh2,
+           confuse_wate=ww)%>%mutate(confuse_corr=x0c)
+  rm(x0,x1,x1a,x2,x2a,x3,x9,x0c)
+  return(x)}
 
