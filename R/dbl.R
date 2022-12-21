@@ -412,7 +412,7 @@ confuseit<-function( df1, cc1, cc2, ww, q ){
     rename(cc1=1,cc2=2,ww=3)
   x1<-x%>%filter(is.na(cc1)&!is.na(cc2))
   x2<-x%>%filter(is.na(cc2)&!is.na(cc1))
-  x3<-x%>%filter(is.na(cc2)&!is.na(cc1))
+  x3<-x%>%filter(is.na(cc2)&is.na(cc1))
   x0<-x%>%filter(!is.na(cc1)&!is.na(cc2))
   x0c<-x0%>%cor()%>%as.data.frame()%>%head(1)%>%select(cc2)%>%as.numeric()
   x9<-x0%>%
