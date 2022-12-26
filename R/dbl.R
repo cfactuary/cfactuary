@@ -456,3 +456,67 @@ confuseit<-function( df1, cc1, cc2, ww, q ){
   rm(x0,x1,x1a,x2,x2a,x3,x9,x0c)
   return(x)}
 
+
+# Accurate GLM encoding
+# returns Accurate GLM encoding and bin definitions given a dataframe, variable, weight, and number of bins
+# check for empty levels
+# median set as base level
+# below median decrement off base
+# above median increment off base
+# factor effects accumulate
+# for more see Accurate GLM paper
+# @param dd dataframe containing variable and weights
+# @param vvname continous variable to bin, should be numeric, can have NAs
+# @param wwname weighting variable for bins, generally will be model weight
+# @param qq number of bins
+# @return dataframe appended with qq Accurate GLM encoded variables (qq - base level + na level)
+
+aglm_encode<-function(dd,vvname,wwname,qq) {
+x0<-dd
+x<-x0%>%ungroup()%>%select(wwname[1],vvname[1])%>%rename(ww=1,vv=2)
+#x0<-x%>%filter(is.na(vv))
+x1<-x%>%filter(!is.na(vv))
+# randomize
+set.seed(1234)
+x1$nn<-runif(nrow(x1),0,1)
+#buckets
+x1<-x1%>%arrange(vv,nn)%>%mutate(q=ceiling(pmax(0.001,cumsum(ww)/sum(ww))/(1/qq)))
+x1$rr<-1:nrow(x1)
+# ensure same value doesn't span multiple buckets
+x2<-x1%>%group_by(vv,q)%>%summarize_at(c('ww'),sum)%>%
+  arrange(vv,desc(ww))%>%group_by(vv)%>%
+  mutate(t=1,t=cumsum(t))%>%filter(t==1)%>%select(vv,q)%>%rename(q=q)
+# set base level to median
+x3<-x1%>%group_by(q)%>%
+  summarize(l=min(vv),h=max(vv),ww=sum(ww))%>%
+  ungroup()%>%
+  mutate(ww0=cumsum(ww)/sum(ww),
+         bb=ifelse(ww0>0.5,1,0),
+         bb=cumsum(bb),
+         bb=ifelse(bb==1,bb,0))
+x30<-x3%>%filter(bb==1)
+x3$q0=x30$q[1]
+# encoding matrix
+for (ctr in 1:nrow(x3)) {
+  if (ctr<x30$q[1]) {  x3<-x3%>%mutate(aa=ifelse(q<=(q0-ctr),1,0))
+#  x3<-x3%>%mutate(aa=ifelse(q>=(q0+ctr),1,0))
+  x3<-x3%>%setnames(old=c('aa'),new=c(paste('aa',sprintf('%03d',x30$q[1]-ctr),sep=''))) }
+  if (ctr>x30$q[1]) {  x3<-x3%>%mutate(aa=ifelse(q>=ctr,1,0))
+  #  x3<-x3%>%mutate(aa=ifelse(q>=(q0+ctr),1,0))
+  x3<-x3%>%setnames(old=c('aa'),new=c(paste('aa',sprintf('%03d',ctr),sep=''))) } }
+x3<-x3%>%select(ends_with('q')|ends_with('l')|ends_with('h')|contains('aa')) #%>%
+#  setnames(old=c('q','l','h'),new=c(paste(vvname,'_bin',sep=''),paste(vvname,'_binlow',sep=''),paste(vvname,'_binhigh',sep='')))
+#colnames(x3)<-gsub('aa',paste(vvname,'_bin',sep=''),colnames(x3))
+
+# appy encoding
+set2z<-function(x){x<-0}
+x2<-x2%>%ungroup()%>%left_join(x3)%>%mutate(aaNA=0)
+x2n<-x2%>%head(1)%>%mutate_all(set2z)%>%mutate(vv=NA,q=-1,l=-1,h=-1,aaNA=1)
+x2<-bind_rows(x2,x2n)
+x2<-x2%>%setnames(old=c('q','l','h','vv'),
+                  new=c(paste(vvname,'_bin',sep=''),paste(vvname,'_binlow',sep=''),paste(vvname,'_binhigh',sep=''),vvname))
+colnames(x2)<-gsub('aa',paste(vvname,'_bin',sep=''),colnames(x2))
+x0<-x0%>%left_join(x2)
+rm(x1,x2,x2n,x3,x30)
+return(x0) }
+
